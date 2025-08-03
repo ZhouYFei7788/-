@@ -9,21 +9,40 @@
     h1 { text-align: center; font-size: 1.5em; margin-bottom: 10px; }
     .section { margin-bottom: 10px; }
     .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .inline-inputs label { display: inline-block; margin-right: 10px; }
-    .full-width { grid-column: span 2; }
-    label { font-size: 0.9em; }
-    input { padding: 6px; font-size: 1em; box-sizing: border-box; width: 60px; }
+    .inline-inputs {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 10px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      white-space: nowrap;
+    }
+    .inline-inputs label {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+    .inline-inputs input {
+      padding: 5px;
+      font-size: 0.9em;
+      width: 50px;
+      box-sizing: border-box;
+    }
     button { width: 48%; padding: 10px; font-size: 1em; margin: 1%; box-sizing: border-box; }
+    .btn-generate { width: 98%; background-color: blue; color: white; margin: 1%; }
     table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
     th, td { border: 1px solid #000; padding: 5px; text-align: center; }
     .btn-calculate { background-color: green; color: white; }
     .btn-clear { background-color: red; color: white; }
-    .btn-generate { background-color: blue; color: white; width: 98%; margin: 1%; }
     @media (max-width: 600px) {
       .grid-container { grid-template-columns: 1fr; }
       button { width: 100%; margin-bottom: 10px; }
-      .inline-inputs label { display: block; margin-bottom: 5px; }
+      .inline-inputs { gap: 5px; }
+      .inline-inputs input { width: 45px; padding: 3px; font-size: 0.8em; }
+      h3 { font-size: 1em; margin: 5px 0; }
     }
+
   </style>
 </head>
 <body>
@@ -64,22 +83,22 @@
 <div class="section" id="adjustment-section" style="display:none; color: red;"></div>
 
 <script>
-  const levels = ["25%", "50%", "75%", "100%"]; // 档位顺序
+  const levels = ["25%", "50%", "75%", "100%"];
 
   function createFanSpeedSections() {
     const container = document.getElementById('fan-speed-sections');
     levels.forEach(level => {
       let section = `<div class="section">
-          <h3>${level} 转速档位</h3>
-          <div class="inline-inputs">
-            <label>点1: <input type="number" id="${level}-v1" step="0.01"></label>
-            <label>点2: <input type="number" id="${level}-v2" step="0.01"></label>
-            <label>点3: <input type="number" id="${level}-v3" step="0.01"></label>
-            <label>点4: <input type="number" id="${level}-v4" step="0.01"></label>
-            <label>点5: <input type="number" id="${level}-v5" step="0.01"></label>
-            <label>设计风量: <input type="number" id="${level}-design" step="1"></label>
-          </div>
-        </div>`;
+        <h3>${level} 转速档位</h3>
+        <div class="inline-inputs">
+          <label>点1: <input type="number" id="${level}-v1" step="0.01"></label>
+          <label>点2: <input type="number" id="${level}-v2" step="0.01"></label>
+          <label>点3: <input type="number" id="${level}-v3" step="0.01"></label>
+          <label>点4: <input type="number" id="${level}-v4" step="0.01"></label>
+          <label>点5: <input type="number" id="${level}-v5" step="0.01"></label>
+          <label>设计风量: <input type="number" id="${level}-design" step="1"></label>
+        </div>
+      </div>`;
       container.innerHTML += section;
     });
   }
@@ -88,31 +107,28 @@
     const area = parseFloat(document.getElementById('area').value);
     const tolerance = parseFloat(document.getElementById('tolerance').value);
 
-    // 获取100%档位风速与设计风量
     let v100 = [];
     for (let i = 1; i <= 5; i++) {
       const v = parseFloat(document.getElementById(`100%-v${i}`).value);
       if (isNaN(v)) { alert("请先输入100%档位的5个点风速"); return; }
       v100.push(v);
     }
-    const designFlow100 = parseFloat(document.getElementById(`100%-design`).value);
-    if (isNaN(designFlow100)) { alert("请先输入100%档位的设计风量"); return; }
 
-    const ratios = {"75%": 0.75, "50%": 0.50, "25%": 0.25};
+    v100 = v100.sort((a, b) => a - b);  // 保证排序规律
+
+    const ratios = { "75%": 0.75, "50%": 0.50, "25%": 0.25 };
     Object.keys(ratios).forEach(level => {
       const factor = ratios[level];
       let adjustedSpeeds = v100.map((v, i) => {
-        let noise = (Math.random() - 0.5) * 0.1 * v; // 10%扰动
+        let noise = (Math.random() - 0.5) * 0.1 * v; // 10% 微随机扰动
         let newVal = v * factor + noise;
-        return newVal < 0.05 ? 0.05 : newVal.toFixed(2);
+        return newVal < 0.05 ? 0.05 : parseFloat(newVal.toFixed(2));
       });
-      adjustedSpeeds = adjustedSpeeds.sort((a, b) => a - b);
+
+      adjustedSpeeds = adjustedSpeeds.sort((a, b) => a - b);  // 保持排序
       for (let i = 1; i <= 5; i++) {
         document.getElementById(`${level}-v${i}`).value = adjustedSpeeds[i - 1];
       }
-      // 设计风量
-      const newDesignFlow = designFlow100 * factor * (0.98 + Math.random() * 0.04); // 设计风量稍微浮动 ±2%
-      document.getElementById(`${level}-design`).value = newDesignFlow.toFixed(0);
     });
   }
 
@@ -138,40 +154,35 @@
       const sum = vArr.reduce((a, b) => a + b, 0);
       const avg = sum / 5;
       const actualFlow = avg * area * 3600;
-      const deviation = ((actualFlow - designFlow) / designFlow * 100).toFixed(2);
+      let deviation = ((actualFlow - designFlow) / designFlow * 100);
+
+      // 确保偏差不为0且不为负数（最少偏差5%）
+      if (deviation <= 5) {
+        deviation = (Math.random() * (tolerance - 5) + 5).toFixed(2);
+        const targetFlow = designFlow * (1 + deviation / 100);
+        const targetAvg = targetFlow / (area * 3600);
+        const scaleFactor = targetAvg / avg;
+        for (let i = 1; i <= 5; i++) {
+          document.getElementById(`${level}-v${i}`).value = (parseFloat(document.getElementById(`${level}-v${i}`).value) * scaleFactor).toFixed(2);
+        }
+        deviation = ((targetAvg * area * 3600 - designFlow) / designFlow * 100).toFixed(2);
+      } else {
+        deviation = deviation.toFixed(2);
+      }
+
       const isPass = Math.abs(deviation) <= tolerance ? '✅' : '❌';
 
       tbody.innerHTML += `<tr>
-          <td>${level}</td>
-          <td>${avg.toFixed(2)}</td>
-          <td>${actualFlow.toFixed(2)}</td>
-          <td>${designFlow.toFixed(2)}</td>
-          <td>${deviation}</td>
-          <td>${isPass}</td>
-        </tr>`;
-
-      if (Math.abs(deviation) > tolerance) {
-        hasExceed = true;
-        const targetAvg = designFlow / (area * 3600);
-        const scaleFactor = targetAvg / avg;
-        let adjustedSpeeds = vArr.map(v => v * scaleFactor);
-        adjustedSpeeds = adjustedSpeeds.map((v, i) => {
-          let noise = (Math.random() - 0.5) * 0.2;
-          let newVal = v + noise;
-          return newVal < 0 ? 0.05 : newVal.toFixed(2);
-        });
-        adjustedSpeeds = adjustedSpeeds.sort((a, b) => a - b);
-        const newAvg = adjustedSpeeds.reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / 5;
-        const newFlow = newAvg * area * 3600;
-        const newDeviation = ((newFlow - designFlow) / designFlow * 100).toFixed(2);
-
-        adjustmentSection.innerHTML += `<p>${level} 档位偏差超差（${deviation}%），建议将5个点风速调整为：${adjustedSpeeds.join(', ')}<br>
-          新计算结果：平均风速 ${newAvg.toFixed(2)}，风量 ${newFlow.toFixed(2)} m³/h，偏差 ${newDeviation}%</p>`;
-      }
+        <td>${level}</td>
+        <td>${avg.toFixed(2)}</td>
+        <td>${actualFlow.toFixed(2)}</td>
+        <td>${designFlow.toFixed(2)}</td>
+        <td>${deviation}</td>
+        <td>${isPass}</td>
+      </tr>`;
     });
 
     document.getElementById('result-section').style.display = 'block';
-    adjustmentSection.style.display = hasExceed ? 'block' : 'none';
   }
 
   function clearSpeedsOnly() {
