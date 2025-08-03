@@ -1,19 +1,22 @@
 <!DOCTYPE html>
-      <html lang="zh-CN">
-      <head>
-      <meta charset="UTF-8">
-      <title>风机风量测试工具</title>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>风机风量测试工具</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 10px; box-sizing: border-box; }
     h1 { text-align: center; font-size: 1.5em; margin-bottom: 10px; }
     .section { margin-bottom: 10px; }
     .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .inline-inputs label { display: inline-block; margin-right: 10px; }
+    .inline-inputs { display: flex; flex-wrap: nowrap; gap: 5px; align-items: center; }
+    .inline-inputs label { display: inline-flex; align-items: center; white-space: nowrap; font-size: 0.9em; }
+    .inline-inputs input { padding: 4px; font-size: 0.9em; width: 50px; box-sizing: border-box; }
+    .design-input { margin-top: 5px; }
+    .design-input label { font-size: 0.9em; }
+    .design-input input { padding: 4px; font-size: 0.9em; width: 80px; }
     .full-width { grid-column: span 2; }
-    label { font-size: 0.9em; }
-    input { padding: 6px; font-size: 1em; box-sizing: border-box; width: 60px; }
-    button { width: 48%; padding: 10px; font-size: 1em; margin: 1%; box-sizing: border-box; }
+    button { width: 48%; padding: 8px; font-size: 1em; margin: 1%; box-sizing: border-box; }
     table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
     th, td { border: 1px solid #000; padding: 5px; text-align: center; }
     .btn-calculate { background-color: green; color: white; }
@@ -21,7 +24,11 @@
     @media (max-width: 600px) {
       .grid-container { grid-template-columns: 1fr; }
       button { width: 100%; margin-bottom: 10px; }
-      .inline-inputs label { display: block; margin-bottom: 5px; }
+      .inline-inputs { flex-wrap: nowrap; gap: 3px; }
+      .inline-inputs label { font-size: 0.8em; }
+      .inline-inputs input { width: 45px; padding: 3px; font-size: 0.8em; }
+      .design-input input { width: 70px; }
+      h3 { font-size: 1em; margin: 5px 0; }
     }
   </style>
 </head>
@@ -72,6 +79,8 @@
             <label>点3: <input type="number" id="${level}-v3" step="0.01"></label>
             <label>点4: <input type="number" id="${level}-v4" step="0.01"></label>
             <label>点5: <input type="number" id="${level}-v5" step="0.01"></label>
+          </div>
+          <div class="design-input">
             <label>设计风量: <input type="number" id="${level}-design" step="1"></label>
           </div>
         </div>`;
