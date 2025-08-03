@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title><!DOCTYPE html>
       <html lang="zh-CN">
       <head>
       <meta charset="UTF-8">
@@ -29,6 +33,19 @@
       width: 50px;
       box-sizing: border-box;
     }
+    .design-input {
+      margin-top: 5px;
+    }
+    .design-input label {
+      font-size: 0.9em;
+    }
+    .design-input input {
+      padding: 6px;
+      font-size: 1em;
+      width: 150px; /* 让设计风量输入框更宽 */
+      box-sizing: border-box;
+    }
+
     button { width: 48%; padding: 10px; font-size: 1em; margin: 1%; box-sizing: border-box; }
     .btn-generate { width: 98%; background-color: blue; color: white; margin: 1%; }
     table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
@@ -91,13 +108,15 @@
       let section = `<div class="section">
         <h3>${level} 转速档位</h3>
         <div class="inline-inputs">
-          <label>点1: <input type="number" id="${level}-v1" step="0.01"></label>
-          <label>点2: <input type="number" id="${level}-v2" step="0.01"></label>
-          <label>点3: <input type="number" id="${level}-v3" step="0.01"></label>
-          <label>点4: <input type="number" id="${level}-v4" step="0.01"></label>
-          <label>点5: <input type="number" id="${level}-v5" step="0.01"></label>
-          <label>设计风量: <input type="number" id="${level}-design" step="1"></label>
-        </div>
+  <label>点1: <input type="number" id="${level}-v1" step="0.01"></label>
+  <label>点2: <input type="number" id="${level}-v2" step="0.01"></label>
+  <label>点3: <input type="number" id="${level}-v3" step="0.01"></label>
+  <label>点4: <input type="number" id="${level}-v4" step="0.01"></label>
+  <label>点5: <input type="number" id="${level}-v5" step="0.01"></label>
+</div>
+<div class="design-input">
+  <label>设计风量: <input type="number" id="${level}-design" step="1"></label>
+</div>
       </div>`;
       container.innerHTML += section;
     });
@@ -198,5 +217,10 @@
 
   createFanSpeedSections();
 </script>
+</body>
+</html></title>
+</head>
+<body>
+
 </body>
 </html>
