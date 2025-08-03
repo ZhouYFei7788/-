@@ -1,8 +1,4 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title><!DOCTYPE html>
       <html lang="zh-CN">
       <head>
       <meta charset="UTF-8">
@@ -13,9 +9,10 @@
     h1 { text-align: center; font-size: 1.5em; margin-bottom: 10px; }
     .section { margin-bottom: 10px; }
     .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .inline-inputs label { display: inline-block; margin-right: 10px; }
     .full-width { grid-column: span 2; }
     label { font-size: 0.9em; }
-    input { width: 100%; padding: 6px; font-size: 1em; box-sizing: border-box; }
+    input { padding: 6px; font-size: 1em; box-sizing: border-box; width: 60px; }
     button { width: 48%; padding: 10px; font-size: 1em; margin: 1%; box-sizing: border-box; }
     table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
     th, td { border: 1px solid #000; padding: 5px; text-align: center; }
@@ -24,6 +21,7 @@
     @media (max-width: 600px) {
       .grid-container { grid-template-columns: 1fr; }
       button { width: 100%; margin-bottom: 10px; }
+      .inline-inputs label { display: block; margin-bottom: 5px; }
     }
   </style>
 </head>
@@ -31,12 +29,8 @@
 <h1>风机风量测试工具</h1>
 
 <div class="section grid-container">
-  <div class="full-width">
-    <label>风口面积 (㎡): <input type="number" id="area" step="0.01" value="2.24"></label>
-  </div>
-  <div class="full-width">
-    <label>允许偏差 (±%): <input type="number" id="tolerance" step="0.1" value="25"></label>
-  </div>
+  <div><label>风口面积: <input type="number" id="area" step="0.01" value="2.24"></label></div>
+  <div><label>允许偏差 (±%): <input type="number" id="tolerance" step="0.1" value="25"></label></div>
 </div>
 
 <div id="fan-speed-sections"></div>
@@ -51,9 +45,9 @@
     <thead>
     <tr>
       <th>档位</th>
-      <th>平均风速 (m/s)</th>
-      <th>实际风量 (m³/h)</th>
-      <th>设计风量 (m³/h)</th>
+      <th>平均风速</th>
+      <th>实际风量</th>
+      <th>设计风量</th>
       <th>偏差 (%)</th>
       <th>判定</th>
     </tr>
@@ -72,12 +66,15 @@
     levels.forEach(level => {
       let section = `<div class="section">
           <h3>${level} 转速档位</h3>
-          <div class="grid-container">`;
-      for (let i = 1; i <= 5; i++) {
-        section += `<div><label>点${i}风速(m/s): <input type="number" id="${level}-v${i}" step="0.01"></label></div>`;
-      }
-      section += `<div class="full-width"><label>设计风量(m³/h): <input type="number" id="${level}-design" step="1"></label></div>`;
-      section += `</div></div>`;
+          <div class="inline-inputs">
+            <label>点1: <input type="number" id="${level}-v1" step="0.01"></label>
+            <label>点2: <input type="number" id="${level}-v2" step="0.01"></label>
+            <label>点3: <input type="number" id="${level}-v3" step="0.01"></label>
+            <label>点4: <input type="number" id="${level}-v4" step="0.01"></label>
+            <label>点5: <input type="number" id="${level}-v5" step="0.01"></label>
+            <label>设计风量: <input type="number" id="${level}-design" step="1"></label>
+          </div>
+        </div>`;
       container.innerHTML += section;
     });
   }
@@ -124,17 +121,22 @@
         hasExceed = true;
         const targetAvg = designFlow / (area * 3600);
         const scaleFactor = targetAvg / avg;
-        let adjustedSpeeds = vArr.map(v => Math.max((v * scaleFactor).toFixed(2), 0.05));
+        let adjustedSpeeds = vArr.map(v => v * scaleFactor);
 
         adjustedSpeeds = adjustedSpeeds.map((v, i) => {
-          let noise = (Math.random() - 0.5) * 0.1;
-          let newVal = parseFloat(v) + noise;
+          let noise = (Math.random() - 0.5) * 0.2;
+          let newVal = v + noise;
           return newVal < 0 ? 0.05 : newVal.toFixed(2);
         });
 
         adjustedSpeeds = adjustedSpeeds.sort((a, b) => a - b);
 
-        adjustmentSection.innerHTML += `<p>${level} 档位偏差超差（${deviation}%），建议将5个点风速调整为：${adjustedSpeeds.join(', ')}。</p>`;
+        const newAvg = adjustedSpeeds.reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / 5;
+        const newFlow = newAvg * area * 3600;
+        const newDeviation = ((newFlow - designFlow) / designFlow * 100).toFixed(2);
+
+        adjustmentSection.innerHTML += `<p>${level} 档位偏差超差（${deviation}%），建议将5个点风速调整为：${adjustedSpeeds.join(', ')}<br>
+          新计算结果：平均风速 ${newAvg.toFixed(2)}，风量 ${newFlow.toFixed(2)} m³/h，偏差 ${newDeviation}%</p>`;
       }
     });
 
@@ -155,11 +157,5 @@
 
   createFanSpeedSections();
 </script>
-</body>
-</html>
-</title>
-</head>
-<body>
-
 </body>
 </html>
