@@ -1,37 +1,28 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <title>风机风量测试工具</title>
+      <html lang="zh-CN">
+      <head>
+      <meta charset="UTF-8">
+      <title>风机风量测试工具</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 10px; box-sizing: border-box; }
     h1 { text-align: center; font-size: 1.5em; margin-bottom: 10px; }
     .section { margin-bottom: 10px; }
     .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .inline-inputs { display: flex; flex-wrap: nowrap; gap: 5px; align-items: center; }
-    .inline-inputs label { display: inline-flex; align-items: center; white-space: nowrap; font-size: 0.9em; }
-    .inline-inputs input { padding: 4px; font-size: 0.9em; width: 50px; box-sizing: border-box; }
-    .design-input { margin-top: 5px; }
-    .design-input label { font-size: 0.9em; }
-    .design-input input { padding: 4px; font-size: 0.9em; width: 80px; }
+    .inline-inputs label { display: inline-block; margin-right: 10px; }
     .full-width { grid-column: span 2; }
-    button { width: 48%; padding: 8px; font-size: 1em; margin: 1%; box-sizing: border-box; }
+    label { font-size: 0.9em; }
+    input { padding: 6px; font-size: 1em; box-sizing: border-box; width: 60px; }
+    button { width: 48%; padding: 10px; font-size: 1em; margin: 1%; box-sizing: border-box; }
     table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
     th, td { border: 1px solid #000; padding: 5px; text-align: center; }
     .btn-calculate { background-color: green; color: white; }
     .btn-clear { background-color: red; color: white; }
+    .btn-generate { background-color: blue; color: white; width: 98%; margin: 1%; }
     @media (max-width: 600px) {
       .grid-container { grid-template-columns: 1fr; }
       button { width: 100%; margin-bottom: 10px; }
-      .inline-inputs { flex-wrap: nowrap; gap: 3px; }
-      .inline-inputs label { font-size: 0.8em; }
-      .inline-inputs input { width: 45px; padding: 3px; font-size: 0.8em; }
-      .design-input input { width: 70px; }
-      h3 { font-size: 1em; margin: 5px 0; }
-      /* Ensure horizontal layout for inputs */
-      .inline-inputs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      .inline-inputs label { margin-right: 2px; }
+      .inline-inputs label { display: block; margin-bottom: 5px; }
     }
   </style>
 </head>
@@ -48,6 +39,10 @@
 <div class="section grid-container">
   <button class="btn-calculate" onclick="calculate()">计算</button>
   <button class="btn-clear" onclick="clearSpeedsOnly()">清除所有数据</button>
+</div>
+
+<div class="section">
+  <button class="btn-generate" onclick="generateLowerSpeeds()">生成下档数据</button>
 </div>
 
 <div class="section" id="result-section" style="display:none;">
@@ -69,7 +64,7 @@
 <div class="section" id="adjustment-section" style="display:none; color: red;"></div>
 
 <script>
-  const levels = ["25%", "50%", "75%", "100%"];
+  const levels = ["25%", "50%", "75%", "100%"]; // 档位顺序
 
   function createFanSpeedSections() {
     const container = document.getElementById('fan-speed-sections');
@@ -82,12 +77,42 @@
             <label>点3: <input type="number" id="${level}-v3" step="0.01"></label>
             <label>点4: <input type="number" id="${level}-v4" step="0.01"></label>
             <label>点5: <input type="number" id="${level}-v5" step="0.01"></label>
-          </div>
-          <div class="design-input">
             <label>设计风量: <input type="number" id="${level}-design" step="1"></label>
           </div>
         </div>`;
       container.innerHTML += section;
+    });
+  }
+
+  function generateLowerSpeeds() {
+    const area = parseFloat(document.getElementById('area').value);
+    const tolerance = parseFloat(document.getElementById('tolerance').value);
+
+    // 获取100%档位风速与设计风量
+    let v100 = [];
+    for (let i = 1; i <= 5; i++) {
+      const v = parseFloat(document.getElementById(`100%-v${i}`).value);
+      if (isNaN(v)) { alert("请先输入100%档位的5个点风速"); return; }
+      v100.push(v);
+    }
+    const designFlow100 = parseFloat(document.getElementById(`100%-design`).value);
+    if (isNaN(designFlow100)) { alert("请先输入100%档位的设计风量"); return; }
+
+    const ratios = {"75%": 0.75, "50%": 0.50, "25%": 0.25};
+    Object.keys(ratios).forEach(level => {
+      const factor = ratios[level];
+      let adjustedSpeeds = v100.map((v, i) => {
+        let noise = (Math.random() - 0.5) * 0.1 * v; // 10%扰动
+        let newVal = v * factor + noise;
+        return newVal < 0.05 ? 0.05 : newVal.toFixed(2);
+      });
+      adjustedSpeeds = adjustedSpeeds.sort((a, b) => a - b);
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById(`${level}-v${i}`).value = adjustedSpeeds[i - 1];
+      }
+      // 设计风量
+      const newDesignFlow = designFlow100 * factor * (0.98 + Math.random() * 0.04); // 设计风量稍微浮动 ±2%
+      document.getElementById(`${level}-design`).value = newDesignFlow.toFixed(0);
     });
   }
 
@@ -104,15 +129,11 @@
       const vArr = [];
       for (let i = 1; i <= 5; i++) {
         const v = parseFloat(document.getElementById(`${level}-v${i}`).value);
-        if (isNaN(v)) {
-          return;
-        }
+        if (isNaN(v)) { return; }
         vArr.push(v);
       }
       const designFlow = parseFloat(document.getElementById(`${level}-design`).value);
-      if (isNaN(designFlow)) {
-        return;
-      }
+      if (isNaN(designFlow)) { return; }
 
       const sum = vArr.reduce((a, b) => a + b, 0);
       const avg = sum / 5;
@@ -134,15 +155,12 @@
         const targetAvg = designFlow / (area * 3600);
         const scaleFactor = targetAvg / avg;
         let adjustedSpeeds = vArr.map(v => v * scaleFactor);
-
         adjustedSpeeds = adjustedSpeeds.map((v, i) => {
           let noise = (Math.random() - 0.5) * 0.2;
           let newVal = v + noise;
           return newVal < 0 ? 0.05 : newVal.toFixed(2);
         });
-
         adjustedSpeeds = adjustedSpeeds.sort((a, b) => a - b);
-
         const newAvg = adjustedSpeeds.reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / 5;
         const newFlow = newAvg * area * 3600;
         const newDeviation = ((newFlow - designFlow) / designFlow * 100).toFixed(2);
