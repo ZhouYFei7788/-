@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title><!DOCTYPE html>
+      <html lang="zh-CN">
+      <head>
+      <meta charset="UTF-8">
+      <title>风机风量测试工具</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 10px; box-sizing: border-box; }
+    h1 { text-align: center; font-size: 1.5em; margin-bottom: 10px; }
+    .section { margin-bottom: 10px; }
+    .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .full-width { grid-column: span 2; }
+    label { font-size: 0.9em; }
+    input { width: 100%; padding: 6px; font-size: 1em; box-sizing: border-box; }
+    button { width: 48%; padding: 10px; font-size: 1em; margin: 1%; box-sizing: border-box; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+    th, td { border: 1px solid #000; padding: 5px; text-align: center; }
+    .btn-calculate { background-color: green; color: white; }
+    .btn-clear { background-color: red; color: white; }
+    @media (max-width: 600px) {
+      .grid-container { grid-template-columns: 1fr; }
+      button { width: 100%; margin-bottom: 10px; }
+    }
+  </style>
+</head>
+<body>
+<h1>风机风量测试工具</h1>
+
+<div class="section grid-container">
+  <div class="full-width">
+    <label>风口面积 (㎡): <input type="number" id="area" step="0.01" value="2.24"></label>
+  </div>
+  <div class="full-width">
+    <label>允许偏差 (±%): <input type="number" id="tolerance" step="0.1" value="25"></label>
+  </div>
+</div>
+
+<div id="fan-speed-sections"></div>
+
+<div class="section grid-container">
+  <button class="btn-calculate" onclick="calculate()">计算</button>
+  <button class="btn-clear" onclick="clearSpeedsOnly()">清除所有数据</button>
+</div>
+
+<div class="section" id="result-section" style="display:none;">
+  <table id="result-table">
+    <thead>
+    <tr>
+      <th>档位</th>
+      <th>平均风速 (m/s)</th>
+      <th>实际风量 (m³/h)</th>
+      <th>设计风量 (m³/h)</th>
+      <th>偏差 (%)</th>
+      <th>判定</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="section" id="adjustment-section" style="display:none; color: red;"></div>
+
+<script>
+  const levels = ["25%", "50%", "75%", "100%"];
+
+  function createFanSpeedSections() {
+    const container = document.getElementById('fan-speed-sections');
+    levels.forEach(level => {
+      let section = `<div class="section">
+          <h3>${level} 转速档位</h3>
+          <div class="grid-container">`;
+      for (let i = 1; i <= 5; i++) {
+        section += `<div><label>点${i}风速(m/s): <input type="number" id="${level}-v${i}" step="0.01"></label></div>`;
+      }
+      section += `<div class="full-width"><label>设计风量(m³/h): <input type="number" id="${level}-design" step="1"></label></div>`;
+      section += `</div></div>`;
+      container.innerHTML += section;
+    });
+  }
+
+  function calculate() {
+    const area = parseFloat(document.getElementById('area').value);
+    const tolerance = parseFloat(document.getElementById('tolerance').value);
+    const tbody = document.querySelector('#result-table tbody');
+    const adjustmentSection = document.getElementById('adjustment-section');
+    tbody.innerHTML = "";
+    adjustmentSection.innerHTML = "";
+    let hasExceed = false;
+
+    levels.forEach(level => {
+      const vArr = [];
+      for (let i = 1; i <= 5; i++) {
+        const v = parseFloat(document.getElementById(`${level}-v${i}`).value);
+        if (isNaN(v)) {
+          return;
+        }
+        vArr.push(v);
+      }
+      const designFlow = parseFloat(document.getElementById(`${level}-design`).value);
+      if (isNaN(designFlow)) {
+        return;
+      }
+
+      const sum = vArr.reduce((a, b) => a + b, 0);
+      const avg = sum / 5;
+      const actualFlow = avg * area * 3600;
+      const deviation = ((actualFlow - designFlow) / designFlow * 100).toFixed(2);
+      const isPass = Math.abs(deviation) <= tolerance ? '✅' : '❌';
+
+      tbody.innerHTML += `<tr>
+          <td>${level}</td>
+          <td>${avg.toFixed(2)}</td>
+          <td>${actualFlow.toFixed(2)}</td>
+          <td>${designFlow.toFixed(2)}</td>
+          <td>${deviation}</td>
+          <td>${isPass}</td>
+        </tr>`;
+
+      if (Math.abs(deviation) > tolerance) {
+        hasExceed = true;
+        const targetAvg = designFlow / (area * 3600);
+        const scaleFactor = targetAvg / avg;
+        let adjustedSpeeds = vArr.map(v => Math.max((v * scaleFactor).toFixed(2), 0.05));
+
+        adjustedSpeeds = adjustedSpeeds.map((v, i) => {
+          let noise = (Math.random() - 0.5) * 0.1;
+          let newVal = parseFloat(v) + noise;
+          return newVal < 0 ? 0.05 : newVal.toFixed(2);
+        });
+
+        adjustedSpeeds = adjustedSpeeds.sort((a, b) => a - b);
+
+        adjustmentSection.innerHTML += `<p>${level} 档位偏差超差（${deviation}%），建议将5个点风速调整为：${adjustedSpeeds.join(', ')}。</p>`;
+      }
+    });
+
+    document.getElementById('result-section').style.display = 'block';
+    adjustmentSection.style.display = hasExceed ? 'block' : 'none';
+  }
+
+  function clearSpeedsOnly() {
+    levels.forEach(level => {
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById(`${level}-v${i}`).value = '';
+      }
+    });
+    document.querySelector('#result-table tbody').innerHTML = '';
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('adjustment-section').style.display = 'none';
+  }
+
+  createFanSpeedSections();
+</script>
+</body>
+</html>
+</title>
+</head>
+<body>
+
+</body>
+</html>
