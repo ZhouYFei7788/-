@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <title><!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
     <meta charset="UTF-8">
-    <title><!DOCTYPE html>
-      <html lang="zh-CN">
-      <head>
-      <meta charset="UTF-8">
-      <title>风机风量测试工具</title>
+    <title>风机风量测试工具</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 10px; box-sizing: border-box; }
@@ -129,27 +129,49 @@
     let v100 = [];
     for (let i = 1; i <= 5; i++) {
       const v = parseFloat(document.getElementById(`100%-v${i}`).value);
-      if (isNaN(v)) { alert("请先输入100%档位的5个点风速"); return; }
+      if (isNaN(v)) {
+        alert("请先输入100%档位的5个点风速");
+        return;
+      }
       v100.push(v);
     }
 
-    v100 = v100.sort((a, b) => a - b);  // 保证排序规律
+    const ratios = { "75%": 0.75, "50%": 0.5, "25%": 0.25 };
 
-    const ratios = { "75%": 0.75, "50%": 0.50, "25%": 0.25 };
-    Object.keys(ratios).forEach(level => {
-      const factor = ratios[level];
-      let adjustedSpeeds = v100.map((v, i) => {
-        let noise = (Math.random() - 0.5) * 0.1 * v; // 10% 微随机扰动
-        let newVal = v * factor + noise;
-        return newVal < 0.05 ? 0.05 : parseFloat(newVal.toFixed(2));
+    Object.entries(ratios).forEach(([level, factor]) => {
+      const designFlowInput = document.getElementById(`${level}-design`);
+      const designFlow = parseFloat(designFlowInput?.value);
+      if (isNaN(designFlow)) {
+        console.warn(`未输入 ${level} 档的设计风量，跳过`);
+        return;
+      }
+
+      // 偏差目标值
+      const devPercent = (Math.random() * (tolerance - 5) + 5) / 100;
+      const targetFlow = designFlow * (1 + devPercent);
+      const targetAvg = targetFlow / (area * 3600); // 风量反推风速
+
+      // 使用 100% 挡位每个点缩放后加扰动
+      let disturbed = v100.map(v => {
+        const scaled = v * factor;
+        const disturbance = 1 + (Math.random() * 0.4 - 0.2); // ±20%
+        return scaled * disturbance;
       });
 
-      adjustedSpeeds = adjustedSpeeds.sort((a, b) => a - b);  // 保持排序
+      // 缩放扰动后风速点以保证最终平均值 = targetAvg
+      const currentAvg = disturbed.reduce((a, b) => a + b, 0) / disturbed.length;
+      const scale = targetAvg / currentAvg;
+      const finalSpeeds = disturbed.map(v => parseFloat((v * scale).toFixed(2)));
+
+      // 写入页面
       for (let i = 1; i <= 5; i++) {
-        document.getElementById(`${level}-v${i}`).value = adjustedSpeeds[i - 1];
+        document.getElementById(`${level}-v${i}`).value = finalSpeeds[i - 1];
       }
+
+      console.log(`${level} 档风量偏差 ≈ ${(devPercent * 100).toFixed(2)}%`);
     });
   }
+
 
   function calculate() {
     const area = parseFloat(document.getElementById('area').value);
@@ -224,4 +246,3 @@
 
 </body>
 </html>
-
